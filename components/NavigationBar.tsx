@@ -33,13 +33,6 @@ export default function NavigationBar() {
           <Text style={styles.tabText}>Events</Text>
         </TouchableOpacity>
       </Link>
-
-      <Link href="/hackatime" asChild>
-        <TouchableOpacity style={styles.tab}>
-          <Timer color="#FFFFFF" size={24} />
-          <Text style={styles.tabText}>HTime</Text>
-        </TouchableOpacity>
-      </Link>
     </View>
   );
 }
