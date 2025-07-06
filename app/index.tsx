@@ -8,6 +8,7 @@ export default function Index() {
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
+        backgroundColor: "#121212",
       }}
     >
       <Image

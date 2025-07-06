@@ -7,31 +7,78 @@ export default function NavigationBar() {
   return (
     <View style={styles.container}>
       <Link href="/" asChild>
-        <TouchableOpacity style={styles.tab}>
-          <Home color="#FFFFFF" size={24} />
-          <Text style={styles.tabText}>Home</Text>
-        </TouchableOpacity>
+      <TouchableOpacity style={styles.tab}>
+        <Home color="#FFFFFF" size={24} />
+        <Text
+        style={styles.tabText}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+        >
+        Home
+        </Text>
+      </TouchableOpacity>
       </Link>
 
       <Link href="/ysws" asChild>
-        <TouchableOpacity style={styles.tab}>
-          <Hammer color="#FFFFFF" size={24} />
-          <Text style={styles.tabText}>YSWS</Text>
-        </TouchableOpacity>
+      <TouchableOpacity style={styles.tab}>
+        <Hammer color="#FFFFFF" size={24} />
+        <Text
+        style={styles.tabText}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+        >
+        YSWS
+        </Text>
+      </TouchableOpacity>
       </Link>
 
       <Link href="/stats" asChild>
-        <TouchableOpacity style={styles.tab}>
-          <BarChart color="#FFFFFF" size={24} />
-          <Text style={styles.tabText}>Stats</Text>
-        </TouchableOpacity>
+      <TouchableOpacity style={styles.tab}>
+        <BarChart color="#FFFFFF" size={24} />
+        <Text
+        style={styles.tabText}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+        >
+        Stats
+        </Text>
+      </TouchableOpacity>
       </Link>
 
       <Link href="/hackathons" asChild>
-        <TouchableOpacity style={styles.tab}>
-          <Computer color="#FFFFFF" size={24} />
-          <Text style={styles.tabText}>Events</Text>
-        </TouchableOpacity>
+      <TouchableOpacity style={styles.tab}>
+        <Computer color="#FFFFFF" size={24} />
+        <Text
+        style={styles.tabText}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+        >
+        Events
+        </Text>
+      </TouchableOpacity>
+      </Link>
+
+      <Link href="/hackatime" asChild>
+      <TouchableOpacity style={styles.tab}>
+        <Timer color="#FFFFFF" size={24} />
+        <Text
+        style={styles.tabText}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+        >
+        Hackatime
+        </Text>
+      </TouchableOpacity>
       </Link>
     </View>
   );
@@ -40,7 +87,7 @@ export default function NavigationBar() {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-around',                  
     alignItems: 'center',
     backgroundColor: '#1A1A1A',
     paddingVertical: 10,
@@ -68,3 +115,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 });
+
+/* Epic text wowoowowowowo */

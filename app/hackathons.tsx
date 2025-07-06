@@ -146,6 +146,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
         padding: 20,
+        backgroundColor: "#121212",
     },
     card: {
         backgroundColor: "#1E1E1E",
