@@ -1,28 +1,88 @@
 import React, { useEffect, useState } from "react";
 import NavigationBar from "@/components/NavigationBar";
 import { Text, View, ScrollView, StyleSheet, SafeAreaView, ActivityIndicator, Image, TouchableOpacity, TextInput, Linking } from "react-native";
-import { Search } from "lucide-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Search, Pin, PinOff, Clock } from "lucide-react-native";
+
+const countryToFlag = (country: string) => {
+    if (!country) return "";
+    const code = country
+        .toUpperCase()
+        .replace(/ /g, "")
+        .replace(/[^A-Z]/g, "");
+    if (code.length !== 2) return "";
+    return String.fromCodePoint(
+        0x1f1e6 + code.charCodeAt(0) - 65,
+        0x1f1e6 + code.charCodeAt(1) - 65
+    );
+};
 
 export default function Hackathons() {
     const [hackathons, setHackathons] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
+    const [pinnedHackathons, setPinnedHackathons] = useState<string[]>([]);
+    const [countdowns, setCountdowns] = useState<{[key: string]: string}>({});
 
     useEffect(() => {
-        const fetchHackathons = async () => {
+        const fetchData = async () => {
             try {
+                const savedPins = await AsyncStorage.getItem('pinnedHackathons');
+                if (savedPins) {
+                    setPinnedHackathons(JSON.parse(savedPins));
+                }
+
                 const response = await fetch("https://dash.hackathons.hackclub.com/api/v1/hackathons");
                 const data = await response.json();
                 setHackathons(data.data);
             } catch (error) {
-                console.error("Error fetching hackathons:", error);
+                console.error("Error fetching data:", error);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchHackathons();
+        fetchData();
     }, []);
+
+    useEffect(() => {
+        const updateCountdowns = () => {
+            const newCountdowns: {[key: string]: string} = {};
+            
+            hackathons.forEach(hackathon => {
+                if (pinnedHackathons.includes(hackathon.id)) {
+                    const now = new Date();
+                    const startsAt = new Date(hackathon.starts_at);
+                    const endsAt = new Date(hackathon.ends_at);
+
+                    if (startsAt > now) {
+                        const timeDiff = startsAt.getTime() - now.getTime();
+                        
+                        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+                        const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+                        
+                        if (days > 0) {
+                            newCountdowns[hackathon.id] = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+                        } else if (hours > 0) {
+                            newCountdowns[hackathon.id] = `${hours}h ${minutes}m ${seconds}s`;
+                        } else {
+                            newCountdowns[hackathon.id] = `${minutes}m ${seconds}s`;
+                        }
+                    }
+                }
+            });
+            
+            setCountdowns(newCountdowns);
+        };
+
+        if (hackathons.length > 0 && pinnedHackathons.length > 0) {
+            updateCountdowns();
+            const interval = setInterval(updateCountdowns, 1000);
+            return () => clearInterval(interval);
+        }
+    }, [hackathons, pinnedHackathons]);
 
     const getHackathonStatus = (hackathon: any) => {
         const now = new Date();
@@ -38,9 +98,33 @@ export default function Hackathons() {
         }
     };
 
+    const togglePin = async (hackathonId: string) => {
+        const newPinnedHackathons = pinnedHackathons.includes(hackathonId)
+            ? pinnedHackathons.filter(id => id !== hackathonId)
+            : [...pinnedHackathons, hackathonId];
+        
+        setPinnedHackathons(newPinnedHackathons);
+        
+        try {
+            await AsyncStorage.setItem('pinnedHackathons', JSON.stringify(newPinnedHackathons));
+        } catch (error) {
+            console.error("Error saving pinned hackathons:", error);
+        }
+    };
+
     const filteredHackathons = hackathons.filter((hackathon) =>
         hackathon.location.city?.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    const sortedHackathons = [...filteredHackathons].sort((a, b) => {
+        const aIsPinned = pinnedHackathons.includes(a.id);
+        const bIsPinned = pinnedHackathons.includes(b.id);
+        
+        if (aIsPinned && !bIsPinned) return -1;
+        if (!aIsPinned && bIsPinned) return 1;
+        
+        return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+    });
 
     if (loading) {
         return (
@@ -69,27 +153,43 @@ export default function Hackathons() {
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
             >
-                {filteredHackathons.map((hackathon) => {
+                {sortedHackathons.map((hackathon) => {
                     const status = getHackathonStatus(hackathon);
                     const isEnded = status === "ended";
-                    
+                    const isPinned = pinnedHackathons.includes(hackathon.id);
+                    const flagEmoji = countryToFlag(hackathon.location.country_code || hackathon.location.country);
+
                     return (
                         <TouchableOpacity
                             key={hackathon.id}
                             style={[
                                 styles.card,
-                                isEnded && styles.endedCard
+                                isEnded && styles.endedCard,
+                                isPinned && styles.pinnedCard
                             ]}
                             onPress={() => hackathon.website && Linking.openURL(hackathon.website)}
                             disabled={isEnded}
                         >
-                            <Image 
-                                source={{ uri: hackathon.logo_url }} 
-                                style={[
-                                    styles.logo,
-                                    isEnded && styles.grayedImage
-                                ]} 
-                            />
+                            <View style={styles.cardTop}>
+                                <Image 
+                                    source={{ uri: hackathon.logo_url }} 
+                                    style={[
+                                        styles.logo,
+                                        isEnded && styles.grayedImage
+                                    ]} 
+                                />
+                                <TouchableOpacity
+                                    style={styles.pinButton}
+                                    onPress={() => togglePin(hackathon.id)}
+                                >
+                                    {isPinned ? (
+                                        <Pin color="#ec3750" size={20} fill="#ec3750" />
+                                    ) : (
+                                        <PinOff color="#888" size={20} />
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                            
                             <View style={styles.cardHeader}>
                                 <Text style={[
                                     styles.name,
@@ -97,6 +197,11 @@ export default function Hackathons() {
                                 ]}>
                                     {hackathon.name}
                                 </Text>
+                                {isPinned && (
+                                    <View style={styles.pinnedIndicator}>
+                                        <Text style={styles.pinnedText}>PINNED</Text>
+                                    </View>
+                                )}
                             </View>
                             <Text style={[
                                 styles.date,
@@ -108,8 +213,19 @@ export default function Hackathons() {
                                 styles.location,
                                 isEnded && styles.grayedText
                             ]}>
-                                {hackathon.location.city || "Online"}, {hackathon.location.country || ""}
+                                {flagEmoji} {hackathon.location.city || "Online"}, {hackathon.location.country || ""}
                             </Text>
+                            
+                            {/* Countdown for pinned upcoming hackathons */}
+                            {isPinned && countdowns[hackathon.id] && (
+                                <View style={styles.countdownContainer}>
+                                    <Clock color="#ec3750" size={16} />
+                                    <Text style={styles.countdownText}>
+                                        Starts in {countdowns[hackathon.id]}
+                                    </Text>
+                                </View>
+                            )}
+                            
                             <View style={[
                                 styles.statusTag,
                                 status === "ended" ? styles.endedPill : 
@@ -166,6 +282,17 @@ const styles = StyleSheet.create({
         borderColor: "#2A2A2A",
         opacity: 0.7,
     },
+    pinnedCard: {
+        borderColor: "#ec3750",
+        borderWidth: 2,
+        backgroundColor: "#1F1E1E",
+    },
+    cardTop: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        marginBottom: 12,
+    },
     cardHeader: {
         flexDirection: "row",
         justifyContent: "space-between",
@@ -176,10 +303,14 @@ const styles = StyleSheet.create({
         width: 64,
         height: 64,
         borderRadius: 8,
-        marginBottom: 12,
     },
     grayedImage: {
         opacity: 0.5,
+    },
+    pinButton: {
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: "#2A2A2A",
     },
     name: {
         fontWeight: "bold",
@@ -190,6 +321,17 @@ const styles = StyleSheet.create({
     },
     grayedText: {
         color: "#777777",
+    },
+    pinnedIndicator: {
+        backgroundColor: "#ec3750",
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    pinnedText: {
+        color: "#FFFFFF",
+        fontSize: 10,
+        fontWeight: "bold",
     },
     date: {
         fontSize: 14,
@@ -239,12 +381,30 @@ const styles = StyleSheet.create({
         textAlign: "center",
     },
     endedPill: {
-        backgroundColor: "#800800",
+        backgroundColor: "#ec3750",
     },
     inPersonPill: {
-        backgroundColor: "#1c8000",
+        backgroundColor: "#33d6a6",
     },
     onlinePill: {
-        backgroundColor: "#000d80",
+        backgroundColor: "#338eda",
+    },
+    countdownContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#2A1F1F",
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        marginTop: 8,
+        borderWidth: 1,
+        borderColor: "#ec3750",
+    },
+    countdownText: {
+        color: "#ec3750",
+        fontSize: 14,
+        fontWeight: "600",
+        marginLeft: 6,
     },
 });
+
