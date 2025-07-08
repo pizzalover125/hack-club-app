@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import NavigationBar from "@/components/NavigationBar";
-import { Text, View, ScrollView, StyleSheet, Linking, SafeAreaView, ActivityIndicator, TouchableOpacity, Modal } from "react-native";
+import { Text, View, ScrollView, StyleSheet, Linking, SafeAreaView, ActivityIndicator, TouchableOpacity, Modal, Share, Alert } from "react-native";
 import { XMLParser } from "fast-xml-parser";
-import { Clock, ChevronDown, Check } from "lucide-react-native";
+import { Clock, ChevronDown, Check, Share2 } from "lucide-react-native";
 
 interface YSWSItem {
   title: string;
@@ -76,6 +76,27 @@ export default function Index() {
       [programKey]: status
     }));
     setDropdownVisible(null);
+  };
+
+  const handleLongPress = async (program: YSWSItem) => {
+    try {
+      const shareContent = {
+        title: program.title,
+        message: `Check out this program: ${program.title}\n\n${program.description}\n\nDeadline: ${program.deadline}\n\nLearn more: ${program.link}`,
+        url: program.link,
+      };
+
+      const result = await Share.share(shareContent);
+      
+      if (result.action === Share.sharedAction) {
+        console.log('Content shared successfully');
+      } else if (result.action === Share.dismissedAction) {
+        console.log('Share dialog dismissed');
+      }
+    } catch (error) {
+      console.error('Error sharing content:', error);
+      Alert.alert('Error', 'Failed to share program details');
+    }
   };
 
   const StatusPicker = ({ programKey, currentStatus }: { programKey: string; currentStatus: string }) => {
@@ -169,8 +190,8 @@ export default function Index() {
         });
 
         const sortedPrograms = formattedPrograms.sort((a, b) => {
-          if (a.isPassed && !b.isPassed) return 1;
           if (!a.isPassed && b.isPassed) return -1;
+          if (a.isPassed && !b.isPassed) return 1;
           return 0;
         });
 
@@ -239,12 +260,26 @@ export default function Index() {
           const currentStatus = programStatuses[programKey] || "";
           
           return (
-            <View key={`upcoming-${index}`} style={styles.card}>
+            <TouchableOpacity
+              key={`upcoming-${index}`}
+              style={styles.card}
+              onLongPress={() => handleLongPress(program)}
+              delayLongPress={500}
+              activeOpacity={0.8}
+            >
               <View style={styles.cardHeader}>
                 <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">
                   {program.title}
                 </Text>
-                <StatusPicker programKey={programKey} currentStatus={currentStatus} />
+                <View style={styles.headerActions}>
+                  <TouchableOpacity
+                    style={styles.shareButton}
+                    onPress={() => handleLongPress(program)}
+                  >
+                    <Share2 color="#CCCCCC" size={18} />
+                  </TouchableOpacity>
+                  <StatusPicker programKey={programKey} currentStatus={currentStatus} />
+                </View>
               </View>
               
               <Text style={styles.description} numberOfLines={4}>
@@ -278,7 +313,7 @@ export default function Index() {
                   </TouchableOpacity>
                 )}
               </View>
-            </View>
+            </TouchableOpacity>
           );
         })}
 
@@ -288,10 +323,25 @@ export default function Index() {
               <Text style={styles.sectionTitle}>Past Programs</Text>
             </View>
             {passedPrograms.map((program, index) => (
-              <View key={`passed-${index}`} style={[styles.card, styles.passedCard]}>
-                <Text style={[styles.title, styles.passedTitle]} numberOfLines={2} ellipsizeMode="tail">
-                  {program.title}
-                </Text>
+              <TouchableOpacity
+                key={`passed-${index}`}
+                style={[styles.card, styles.passedCard]}
+                onLongPress={() => handleLongPress(program)}
+                delayLongPress={500}
+                activeOpacity={0.8}
+              >
+                <View style={styles.cardHeader}>
+                  <Text style={[styles.title, styles.passedTitle]} numberOfLines={2} ellipsizeMode="tail">
+                    {program.title}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.shareButton}
+                    onPress={() => handleLongPress(program)}
+                  >
+                    <Share2 color="#666666" size={18} />
+                  </TouchableOpacity>
+                </View>
+                
                 <Text style={[styles.description, styles.passedDescription]} numberOfLines={4}>
                   {program.description}
                 </Text>
@@ -313,7 +363,11 @@ export default function Index() {
                     </TouchableOpacity>
                   )}
                 </View>
-              </View>
+                
+                <View style={styles.longPressHint}>
+                  <Text style={[styles.longPressHintText, styles.passedLongPressHint]}>Long press to share</Text>
+                </View>
+              </TouchableOpacity>
             ))}
           </>
         )}
@@ -409,6 +463,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
     marginBottom: 12,
+  },
+
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  shareButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: "#2A2A2A",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   passedCard: {
@@ -640,5 +708,20 @@ const styles = StyleSheet.create({
   modalOptionText: {
     fontSize: 16,
     fontWeight: "500",
+  },
+
+  longPressHint: {
+    marginTop: 8,
+    alignItems: "center",
+  },
+
+  longPressHintText: {
+    fontSize: 12,
+    color: "#666666",
+    fontStyle: "italic",
+  },
+
+  passedLongPressHint: {
+    color: "#444444",
   },
 });

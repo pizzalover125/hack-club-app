@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import NavigationBar from "@/components/NavigationBar";
-import { Text, View, ScrollView, StyleSheet, SafeAreaView, ActivityIndicator, Image, TouchableOpacity, TextInput, Linking } from "react-native";
+import { Text, View, ScrollView, StyleSheet, SafeAreaView, ActivityIndicator, Image, TouchableOpacity, TextInput, Linking, Share, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Search, Pin, PinOff, Clock } from "lucide-react-native";
+import { Search, Pin, PinOff, Clock, Share2 } from "lucide-react-native";
 
 const countryToFlag = (country: string) => {
     if (!country) return "";
@@ -112,16 +112,55 @@ export default function Hackathons() {
         }
     };
 
+    const handleShare = async (hackathon: any) => {
+        try {
+            const flagEmoji = countryToFlag(hackathon.location.country_code || hackathon.location.country);
+            const location = hackathon.location.city || "Online";
+            const country = hackathon.location.country || "";
+            const status = getHackathonStatus(hackathon);
+            const statusText = status === "ended" ? "Ended" : status === "in-person" ? "In-person" : "Online";
+            
+            const shareContent = {
+                title: hackathon.name,
+                message: `Check out this hackathon: ${hackathon.name}\n\n📅 ${new Date(hackathon.starts_at).toLocaleDateString()} - ${new Date(hackathon.ends_at).toLocaleDateString()}\n📍 ${flagEmoji} ${location}, ${country}\n🏷️ ${statusText}${hackathon.website ? `\n\nLearn more: ${hackathon.website}` : ''}`,
+                url: hackathon.website || '',
+            };
+
+            const result = await Share.share(shareContent);
+            
+            if (result.action === Share.sharedAction) {
+                console.log('Hackathon shared successfully');
+            } else if (result.action === Share.dismissedAction) {
+                console.log('Share dialog dismissed');
+            }
+        } catch (error) {
+            console.error('Error sharing hackathon:', error);
+            Alert.alert('Error', 'Failed to share hackathon details');
+        }
+    };
+
     const filteredHackathons = hackathons.filter((hackathon) =>
         hackathon.location.city?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const sortedHackathons = [...filteredHackathons].sort((a, b) => {
-        const aIsPinned = pinnedHackathons.includes(a.id);
-        const bIsPinned = pinnedHackathons.includes(b.id);
+        const aStatus = getHackathonStatus(a);
+        const bStatus = getHackathonStatus(b);
+        const aIsEnded = aStatus === "ended";
+        const bIsEnded = bStatus === "ended";
         
-        if (aIsPinned && !bIsPinned) return -1;
-        if (!aIsPinned && bIsPinned) return 1;
+        // First, separate ended from non-ended
+        if (aIsEnded && !bIsEnded) return 1;
+        if (!aIsEnded && bIsEnded) return -1;
+        
+        // For non-ended hackathons, prioritize pinned ones
+        if (!aIsEnded && !bIsEnded) {
+            const aIsPinned = pinnedHackathons.includes(a.id);
+            const bIsPinned = pinnedHackathons.includes(b.id);
+            
+            if (aIsPinned && !bIsPinned) return -1;
+            if (!aIsPinned && bIsPinned) return 1;
+        }
         
         return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
     });
@@ -178,16 +217,24 @@ export default function Hackathons() {
                                         isEnded && styles.grayedImage
                                     ]} 
                                 />
-                                <TouchableOpacity
-                                    style={styles.pinButton}
-                                    onPress={() => togglePin(hackathon.id)}
-                                >
-                                    {isPinned ? (
-                                        <Pin color="#ec3750" size={20} fill="#ec3750" />
-                                    ) : (
-                                        <PinOff color="#888" size={20} />
-                                    )}
-                                </TouchableOpacity>
+                                <View style={styles.cardActions}>
+                                    <TouchableOpacity
+                                        style={styles.shareButton}
+                                        onPress={() => handleShare(hackathon)}
+                                    >
+                                        <Share2 color={isEnded ? "#666666" : "#CCCCCC"} size={18} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.pinButton}
+                                        onPress={() => togglePin(hackathon.id)}
+                                    >
+                                        {isPinned ? (
+                                            <Pin color="#ec3750" size={20} fill="#ec3750" />
+                                        ) : (
+                                            <PinOff color="#888" size={20} />
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
                             </View>
                             
                             <View style={styles.cardHeader}>
@@ -293,6 +340,10 @@ const styles = StyleSheet.create({
         alignItems: "flex-start",
         marginBottom: 12,
     },
+    cardActions: {
+        flexDirection: "row",
+        gap: 8,
+    },
     cardHeader: {
         flexDirection: "row",
         justifyContent: "space-between",
@@ -306,6 +357,13 @@ const styles = StyleSheet.create({
     },
     grayedImage: {
         opacity: 0.5,
+    },
+    shareButton: {
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: "#2A2A2A",
+        alignItems: "center",
+        justifyContent: "center",
     },
     pinButton: {
         padding: 8,
@@ -407,4 +465,3 @@ const styles = StyleSheet.create({
         marginLeft: 6,
     },
 });
-
