@@ -154,5 +154,7 @@ export default function Index() {
 
       <NavigationBar />
     </View>
+
+    // this is a test
   );
 }
